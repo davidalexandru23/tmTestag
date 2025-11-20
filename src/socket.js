@@ -29,17 +29,20 @@ export const initSocket = (server) => {
         socket.on('update_location', async (data) => {
             const { userId, latitude, longitude, workspaceId } = data;
             try {
-                await prisma.user.update({
+                // Update user location in database
+                const user = await prisma.user.update({
                     where: { id: userId },
                     data: { latitude, longitude },
+                    select: { id: true, name: true, latitude: true, longitude: true },
                 });
 
-                // Broadcast to workspace members
+                // Broadcast to workspace members with user name
                 if (workspaceId) {
                     socket.to(`workspace_${workspaceId}`).emit('member_location_updated', {
-                        userId,
-                        latitude,
-                        longitude,
+                        userId: user.id,
+                        name: user.name,
+                        latitude: user.latitude,
+                        longitude: user.longitude,
                     });
                 }
             } catch (error) {

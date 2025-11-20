@@ -12,6 +12,7 @@ import taskRoutes from './api/routes/task.routes.js';
 import logRoutes from './api/routes/log.routes.js';
 import userRoutes from './api/routes/user.routes.js';
 import messageRoutes from './api/routes/message.routes.js';
+import locationRoutes from './api/routes/location.routes.js';
 import ApiError from './utils/apiError.js';
 import logger from './utils/logger.js';
 import { initSocket } from './socket.js';
@@ -51,6 +52,7 @@ app.use('/api/v1/tasks', taskRoutes);
 app.use('/api/v1/logs', logRoutes);
 app.use('/api/v1/users', userRoutes);
 app.use('/api/v1/messages', messageRoutes);
+app.use('/api/v1/locations', locationRoutes);
 
 // Handle SPA routing: return index.html for any unknown route not starting with /api
 app.get('*', (req, res, next) => {

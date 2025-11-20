@@ -4,13 +4,18 @@ WORKDIR /app
 
 COPY package*.json ./
 
-RUN npm install --production
+# Install all dependencies (including devDependencies for prisma)
+RUN npm ci
 
 RUN apk add --no-cache openssl ca-certificates
 
 COPY . .
 
+# Generate Prisma Client
 RUN npx prisma generate
+
+# Clean up devDependencies to reduce image size
+RUN npm prune --production
 
 EXPOSE 4000
 

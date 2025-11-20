@@ -29,3 +29,16 @@ export const searchUsers = async (query) => {
 
   return users;
 };
+
+export const getUserById = async (userId) => {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { id: true, name: true, email: true },
+  });
+
+  if (!user) {
+    throw new ApiError(404, 'Utilizatorul nu a fost găsit.');
+  }
+
+  return user;
+};

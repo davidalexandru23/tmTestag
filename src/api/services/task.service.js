@@ -417,9 +417,17 @@ export const deleteTask = async (userId, taskId) => {
   const task = await prisma.task.findUnique({ where: { id: taskId } });
   if (!task) throw new ApiError(404, 'Task-ul nu există.');
 
-  const membership = await requireWorkspaceMembership(userId, task.workspaceId);
-  if (![Role.OWNER, Role.LEADER].includes(membership.role) && task.creatorId !== userId) {
-    throw new ApiError(403, 'Nu aveți permisiunea de a șterge acest task.');
+  // For personal tasks (no workspace), only creator can delete
+  if (!task.workspaceId) {
+    if (task.creatorId !== userId) {
+      throw new ApiError(403, 'Nu aveți permisiunea de a șterge acest task.');
+    }
+  } else {
+    // For workspace tasks, check membership permissions
+    const membership = await requireWorkspaceMembership(userId, task.workspaceId);
+    if (![Role.OWNER, Role.LEADER].includes(membership.role) && task.creatorId !== userId) {
+      throw new ApiError(403, 'Nu aveți permisiunea de a șterge acest task.');
+    }
   }
 
   await prisma.task.delete({ where: { id: taskId } });

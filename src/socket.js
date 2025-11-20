@@ -21,6 +21,32 @@ export const initSocket = (server) => {
             logger.info(`User ${socket.id} joined room: ${room}`);
         });
 
+        socket.on('join_workspace', (workspaceId) => {
+            socket.join(`workspace_${workspaceId}`);
+            logger.info(`User ${socket.id} joined workspace: ${workspaceId}`);
+        });
+
+        socket.on('update_location', async (data) => {
+            const { userId, latitude, longitude, workspaceId } = data;
+            try {
+                await prisma.user.update({
+                    where: { id: userId },
+                    data: { latitude, longitude },
+                });
+
+                // Broadcast to workspace members
+                if (workspaceId) {
+                    socket.to(`workspace_${workspaceId}`).emit('member_location_updated', {
+                        userId,
+                        latitude,
+                        longitude,
+                    });
+                }
+            } catch (error) {
+                logger.error('Error updating location:', error);
+            }
+        });
+
         // Handle chat messages
         socket.on('send_message', async (data) => {
             // data: { senderId, receiverId?, workspaceId?, content }

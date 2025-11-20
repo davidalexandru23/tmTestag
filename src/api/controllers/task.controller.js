@@ -6,6 +6,9 @@ import {
   createSubTask as createSubTaskService,
   updateTaskStatus as updateTaskStatusService,
   getTaskLocations as getTaskLocationsService,
+  updateTask as updateTaskService,
+  deleteTask as deleteTaskService,
+  listWorkspaceTasks as listWorkspaceTasksService,
 } from '../services/task.service.js';
 
 export const createTask = async (req, res) => {
@@ -41,4 +44,19 @@ export const updateTaskStatus = async (req, res) => {
 export const getTaskLocations = async (req, res) => {
   const locations = await getTaskLocationsService(req.user.id);
   res.status(200).json(locations);
+};
+
+export const updateTask = async (req, res) => {
+  const task = await updateTaskService(req.user.id, req.params.id, req.body);
+  res.status(200).json(task);
+};
+
+export const deleteTask = async (req, res) => {
+  await deleteTaskService(req.user.id, req.params.id);
+  res.status(204).send();
+};
+
+export const listWorkspaceTasks = async (req, res) => {
+  const tasks = await listWorkspaceTasksService(req.user.id, req.params.workspaceId);
+  res.status(200).json(tasks);
 };

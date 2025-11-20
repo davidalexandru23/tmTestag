@@ -15,5 +15,6 @@ router.post('/', createWorkspace);
 router.get('/', listWorkspaces);
 router.get('/:id', getWorkspace);
 router.post('/:id/members', addWorkspaceMember);
+router.delete('/:id', deleteWorkspace);
 
 export default router;

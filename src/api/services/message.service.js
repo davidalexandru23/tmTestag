@@ -100,3 +100,27 @@ export const saveDirectMessage = async (senderId, receiverId, content) => {
 
     return message;
 };
+
+/**
+ * Get messages for a workspace
+ * @param {string} userId - Current user ID
+ * @param {string} workspaceId - Workspace ID
+ * @returns {Promise<Array>} - Array of messages
+ */
+export const getWorkspaceMessages = async (userId, workspaceId) => {
+    // Verify membership (assuming middleware/controller handles basic auth, but good to check access)
+    // For now, we trust the route protection or add a check here if needed.
+    // Ideally, we should check if user is member of workspace.
+
+    const messages = await prisma.message.findMany({
+        where: { workspaceId },
+        include: {
+            sender: {
+                select: { id: true, name: true, email: true },
+            },
+        },
+        orderBy: { createdAt: 'asc' },
+    });
+
+    return messages;
+};

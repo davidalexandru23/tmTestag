@@ -3,6 +3,7 @@ import {
   listWorkspaces as listWorkspacesService,
   getWorkspace as getWorkspaceService,
   addWorkspaceMember as addWorkspaceMemberService,
+  deleteWorkspace as deleteWorkspaceService,
 } from '../services/workspace.service.js';
 
 export const createWorkspace = async (req, res) => {
@@ -21,6 +22,11 @@ export const getWorkspace = async (req, res) => {
 };
 
 export const addWorkspaceMember = async (req, res) => {
-  const member = await addWorkspaceMemberService(req.user.id, req.params.id, req.body);
+  const member = await addWorkspaceMemberService(req.user.id, req.params.id, req.body.email);
   res.status(201).json(member);
+};
+
+export const deleteWorkspace = async (req, res) => {
+  await deleteWorkspaceService(req.user.id, req.params.id);
+  res.status(204).send();
 };

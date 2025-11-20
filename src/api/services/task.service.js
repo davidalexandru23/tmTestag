@@ -387,3 +387,55 @@ export const getTaskLocations = async (userId) => {
   });
   return tasks;
 };
+
+export const updateTask = async (userId, taskId, payload) => {
+  const task = await prisma.task.findUnique({ where: { id: taskId } });
+  if (!task) throw new ApiError(404, 'Task-ul nu există.');
+
+  const membership = await requireWorkspaceMembership(userId, task.workspaceId);
+  if (![Role.OWNER, Role.LEADER].includes(membership.role) && task.creatorId !== userId) {
+    throw new ApiError(403, 'Nu aveți permisiunea de a edita acest task.');
+  }
+
+  const { title, description, dueDate, assigneeId } = payload;
+  const parsedDueDate = validateDueDate(dueDate);
+
+  const updatedTask = await prisma.task.update({
+    where: { id: taskId },
+    data: {
+      title,
+      description,
+      dueDate: parsedDueDate,
+    },
+    include: includeAssignments,
+  });
+
+  return updatedTask;
+};
+
+export const deleteTask = async (userId, taskId) => {
+  const task = await prisma.task.findUnique({ where: { id: taskId } });
+  if (!task) throw new ApiError(404, 'Task-ul nu există.');
+
+  const membership = await requireWorkspaceMembership(userId, task.workspaceId);
+  if (![Role.OWNER, Role.LEADER].includes(membership.role) && task.creatorId !== userId) {
+    throw new ApiError(403, 'Nu aveți permisiunea de a șterge acest task.');
+  }
+
+  await prisma.task.delete({ where: { id: taskId } });
+};
+
+export const listWorkspaceTasks = async (userId, workspaceId) => {
+  const membership = await requireWorkspaceMembership(userId, workspaceId);
+  if (![Role.OWNER, Role.LEADER].includes(membership.role)) {
+    throw new ApiError(403, 'Doar liderii pot vedea toate task-urile din workspace.');
+  }
+
+  const tasks = await prisma.task.findMany({
+    where: { workspaceId },
+    include: includeAssignments,
+    orderBy: { createdAt: 'desc' },
+  });
+
+  return tasks;
+};

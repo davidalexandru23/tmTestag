@@ -36,6 +36,8 @@ model User {
   refreshTokens        RefreshToken[]
   sentMessages         Message[]         @relation("SentMessages")
   receivedMessages     Message[]         @relation("ReceivedMessages")
+  latitude             Float?
+  longitude            Float?
 }
 
 model Workspace {

@@ -1,0 +1,138 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  OWNER
+  LEADER
+  MEMBER
+}
+
+enum Status {
+  TODO
+  IN_PROGRESS
+  DONE
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String
+  password  String
+  role      Role     @default(MEMBER)
+  createdAt DateTime @default(now())
+
+  ownedWorkspaces      Workspace[]       @relation("WorkspaceOwner")
+  createdTasks         Task[]            @relation("TaskCreator")
+  assignedTasks        TaskAssignment[]  @relation("TaskAssignee")
+  workspaceMemberships WorkspaceMember[] @relation("WorkspaceMember")
+  activityLogs         ActivityLog[]     @relation("UserLogs")
+  refreshTokens        RefreshToken[]
+  sentMessages         Message[]         @relation("SentMessages")
+  receivedMessages     Message[]         @relation("ReceivedMessages")
+}
+
+model Workspace {
+  id        String   @id @default(cuid())
+  name      String
+  createdAt DateTime @default(now())
+
+  ownerId String
+  owner   User   @relation("WorkspaceOwner", fields: [ownerId], references: [id])
+
+  members  WorkspaceMember[] @relation("WorkspaceMembers")
+  tasks    Task[]            @relation("WorkspaceTasks")
+  messages Message[]         @relation("WorkspaceMessages")
+}
+
+model WorkspaceMember {
+  id       String   @id @default(cuid())
+  role     Role     @default(MEMBER)
+  joinedAt DateTime @default(now())
+
+  userId String
+  user   User   @relation("WorkspaceMember", fields: [userId], references: [id])
+
+  workspaceId String
+  workspace   Workspace @relation("WorkspaceMembers", fields: [workspaceId], references: [id])
+
+  @@unique([userId, workspaceId])
+}
+
+model Task {
+  id              String    @id @default(cuid())
+  title           String
+  description     String?
+  status          Status    @default(TODO)
+  dueDate         DateTime?
+  createdAt       DateTime  @default(now())
+  latitude        Float?
+  longitude       Float?
+  delegationCount Int       @default(0)
+
+  creatorId String
+  creator   User   @relation("TaskCreator", fields: [creatorId], references: [id])
+
+  workspaceId String
+  workspace   Workspace @relation("WorkspaceTasks", fields: [workspaceId], references: [id])
+
+  parentId String?
+  parent   Task?  @relation("SubTasks", fields: [parentId], references: [id])
+  subTasks Task[] @relation("SubTasks")
+
+  assignments     TaskAssignment[] @relation("TaskAssignments")
+  delegationChain String[]
+}
+
+model TaskAssignment {
+  id         String   @id @default(cuid())
+  assignedAt DateTime @default(now())
+
+  taskId String
+  task   Task   @relation("TaskAssignments", fields: [taskId], references: [id])
+
+  assigneeId String
+  assignee   User   @relation("TaskAssignee", fields: [assigneeId], references: [id])
+
+  @@unique([taskId, assigneeId])
+}
+
+model Message {
+  id        String   @id @default(cuid())
+  content   String
+  createdAt DateTime @default(now())
+
+  senderId String
+  sender   User   @relation("SentMessages", fields: [senderId], references: [id])
+
+  // Messages can be direct (receiverId) or workspace-wide (workspaceId)
+  receiverId String?
+  receiver   User?   @relation("ReceivedMessages", fields: [receiverId], references: [id])
+
+  workspaceId String?
+  workspace   Workspace? @relation("WorkspaceMessages", fields: [workspaceId], references: [id])
+}
+
+model ActivityLog {
+  id        String   @id @default(cuid())
+  action    String
+  actorName String
+  timestamp DateTime @default(now())
+
+  userId String
+  user   User   @relation("UserLogs", fields: [userId], references: [id])
+}
+
+model RefreshToken {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  expiresAt DateTime
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+}

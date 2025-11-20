@@ -75,7 +75,7 @@ const includeAssignments = {
   },
 };
 
-export const createTask = async (userId, payload) => {
+export const createTask = async (userId, payload, io) => {
   const { workspaceId, title, description, dueDate, assigneeId, latitude, longitude } = payload;
 
   if (!title) {
@@ -99,23 +99,16 @@ export const createTask = async (userId, payload) => {
       description,
       dueDate: parsedDueDate,
       creatorId: userId,
+      workspaceId,
       latitude,
       longitude,
+      delegationChain: [userId],
     };
-
-    // Add workspace-specific fields if workspace is provided
-    if (workspaceId) {
-      taskData.workspaceId = workspaceId;
-      taskData.delegationChain = assigneeId ? [userId, assigneeId] : [userId];
-    } else {
-      taskData.delegationChain = [userId]; // Personal task
-    }
 
     const createdTask = await tx.task.create({
       data: taskData,
     });
 
-    // Create assignment only if assignee is provided
     if (assigneeId) {
       await tx.taskAssignment.create({
         data: {
@@ -123,12 +116,49 @@ export const createTask = async (userId, payload) => {
           assigneeId,
         },
       });
+
+      // Add assignee to delegation chain if not creator
+      if (assigneeId !== userId) {
+        await tx.task.update({
+          where: { id: createdTask.id },
+          data: { delegationChain: { push: assigneeId } }
+        });
+      }
     }
 
     return createdTask;
   });
 
-  return task;
+  const actor = await prisma.user.findUnique({ where: { id: userId }, select: { name: true } });
+  await createActivityLogs(
+    task.delegationChain,
+    actor?.name || 'Sistem',
+    `${actor?.name || 'Sistem'} a creat sarcina '${title}'.`
+  );
+
+  const finalTask = await prisma.task.findUnique({
+    where: { id: task.id },
+    include: includeAssignments,
+  });
+
+  // EMIT NOTIFICATIONS
+  if (io) {
+    // 1. Notify Assignee
+    if (assigneeId && assigneeId !== userId) {
+      io.to(assigneeId).emit('notification', {
+        title: 'Sarcină Nouă',
+        body: `${actor?.name || 'Un coleg'} ți-a atribuit sarcina: ${title}`,
+        taskId: task.id,
+      });
+    }
+
+    // 2. Notify Workspace (for live updates)
+    if (workspaceId) {
+      io.to(`workspace_${workspaceId}`).emit('task_created', finalTask);
+    }
+  }
+
+  return finalTask;
 };
 
 export const listTasks = async (userId, filter) => {
@@ -199,7 +229,7 @@ export const getTaskById = async (userId, taskId) => {
   };
 };
 
-export const delegateTask = async (userId, taskId, newAssigneeId) => {
+export const delegateTask = async (userId, taskId, newAssigneeId, io) => {
   if (!newAssigneeId) {
     throw new ApiError(400, 'newAssigneeId este obligatoriu.');
   }
@@ -265,6 +295,15 @@ export const delegateTask = async (userId, taskId, newAssigneeId) => {
     include: includeAssignments,
   });
 
+  // EMIT NOTIFICATIONS
+  if (io) {
+    io.to(newAssigneeId).emit('notification', {
+      title: 'Sarcină Delegată',
+      body: `${actor?.name || 'Un coleg'} ți-a delegat sarcina: ${task.title}`,
+      taskId: task.id,
+    });
+  }
+
   return updatedTask;
 };
 
@@ -314,7 +353,7 @@ export const createSubTask = async (userId, parentTaskId, payload) => {
   return subTask;
 };
 
-export const updateTaskStatus = async (userId, taskId, status) => {
+export const updateTaskStatus = async (userId, taskId, status, io) => {
   if (!status) {
     throw new ApiError(400, 'status este obligatoriu.');
   }
@@ -368,6 +407,27 @@ export const updateTaskStatus = async (userId, taskId, status) => {
         actor?.name || 'Sistem',
         `${actor?.name || 'Sistem'} a finalizat sarcina '${parentTask.title}'.`
       );
+
+      // Notify creator of parent task
+      if (io && parentTask.creatorId !== userId) {
+        io.to(parentTask.creatorId).emit('notification', {
+          title: 'Sarcina Părinte Finalizată',
+          body: `Toate sub-sarcinile pentru '${parentTask.title}' au fost finalizate.`,
+          taskId: parentTask.id,
+        });
+      }
+    }
+  }
+
+  // EMIT NOTIFICATIONS
+  if (io) {
+    // Notify creator if they are not the one updating
+    if (task.creatorId !== userId) {
+      io.to(task.creatorId).emit('notification', {
+        title: 'Status Actualizat',
+        body: `${actor?.name || 'Un coleg'} a schimbat statusul sarcinii '${task.title}' în ${status}.`,
+        taskId: task.id,
+      });
     }
   }
 

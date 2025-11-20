@@ -12,7 +12,7 @@ import {
 } from '../services/task.service.js';
 
 export const createTask = async (req, res) => {
-  const task = await createTaskService(req.user.id, req.body);
+  const task = await createTaskService(req.user.id, req.body, req.io);
   res.status(201).json(task);
 };
 
@@ -27,17 +27,17 @@ export const getTask = async (req, res) => {
 };
 
 export const delegateTask = async (req, res) => {
-  const updatedTask = await delegateTaskService(req.user.id, req.params.id, req.body.newAssigneeId);
+  const updatedTask = await delegateTaskService(req.user.id, req.params.id, req.body.newAssigneeId, req.io);
   res.status(200).json(updatedTask);
 };
 
 export const createSubTask = async (req, res) => {
-  const subTask = await createSubTaskService(req.user.id, req.params.id, req.body);
+  const subTask = await createSubTaskService(req.user.id, req.params.id, req.body, req.io);
   res.status(201).json(subTask);
 };
 
 export const updateTaskStatus = async (req, res) => {
-  const task = await updateTaskStatusService(req.user.id, req.params.id, req.body.status);
+  const task = await updateTaskStatusService(req.user.id, req.params.id, req.body.status, req.io);
   res.status(200).json(task);
 };
 

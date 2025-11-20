@@ -77,35 +77,53 @@ const includeAssignments = {
 
 export const createTask = async (userId, payload) => {
   const { workspaceId, title, description, dueDate, assigneeId, latitude, longitude } = payload;
-  if (!workspaceId || !title || !assigneeId) {
-    throw new ApiError(400, 'workspaceId, title și assigneeId sunt obligatorii.');
+
+  if (!title) {
+    throw new ApiError(400, 'title este obligatoriu.');
   }
 
-  await requireWorkspaceMembership(userId, workspaceId);
-  await ensureAssigneeMembership(assigneeId, workspaceId);
+  // If workspace is provided, validate memberships
+  if (workspaceId) {
+    await requireWorkspaceMembership(userId, workspaceId);
+
+    if (assigneeId) {
+      await ensureAssigneeMembership(assigneeId, workspaceId);
+    }
+  }
 
   const parsedDueDate = validateDueDate(dueDate);
 
   const task = await prisma.$transaction(async (tx) => {
+    const taskData = {
+      title,
+      description,
+      dueDate: parsedDueDate,
+      creatorId: userId,
+      latitude,
+      longitude,
+    };
+
+    // Add workspace-specific fields if workspace is provided
+    if (workspaceId) {
+      taskData.workspaceId = workspaceId;
+      taskData.delegationChain = assigneeId ? [userId, assigneeId] : [userId];
+    } else {
+      taskData.delegationChain = [userId]; // Personal task
+    }
+
     const createdTask = await tx.task.create({
-      data: {
-        title,
-        description,
-        dueDate: parsedDueDate,
-        creatorId: userId,
-        workspaceId,
-        delegationChain: [userId, assigneeId],
-        latitude,
-        longitude,
-      },
+      data: taskData,
     });
 
-    await tx.taskAssignment.create({
-      data: {
-        taskId: createdTask.id,
-        assigneeId,
-      },
-    });
+    // Create assignment only if assignee is provided
+    if (assigneeId) {
+      await tx.taskAssignment.create({
+        data: {
+          taskId: createdTask.id,
+          assigneeId,
+        },
+      });
+    }
 
     return createdTask;
   });

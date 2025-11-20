@@ -79,8 +79,8 @@ model Task {
   creatorId String
   creator   User   @relation("TaskCreator", fields: [creatorId], references: [id])
 
-  workspaceId String
-  workspace   Workspace @relation("WorkspaceTasks", fields: [workspaceId], references: [id])
+  workspaceId String?
+  workspace   Workspace? @relation("WorkspaceTasks", fields: [workspaceId], references: [id])
 
   parentId String?
   parent   Task?  @relation("SubTasks", fields: [parentId], references: [id])

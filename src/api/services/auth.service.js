@@ -114,3 +114,35 @@ export const logout = async ({ userId, refreshToken }) => {
 
   await prisma.refreshToken.deleteMany({ where: { userId, token: refreshToken } });
 };
+
+export const changePassword = async (userId, oldPassword, newPassword) => {
+  if (!oldPassword || !newPassword) {
+    throw new ApiError(400, 'Parola veche și noua sunt obligatorii.');
+  }
+
+  if (newPassword.length < 6) {
+    throw new ApiError(400, 'Parola nouă trebuie să aibă minim 6 caractere.');
+  }
+
+  const user = await prisma.user.findUnique({ where: { id: userId } });
+  if (!user) {
+    throw new ApiError(404, 'Utilizator negăsit.');
+  }
+
+  const isValidPassword = await bcrypt.compare(oldPassword, user.password);
+  if (!isValidPassword) {
+    throw new ApiError(401, 'Parola veche este incorectă.');
+  }
+
+  const hashedPassword = await bcrypt.hash(newPassword, SALT_ROUNDS);
+
+  await prisma.user.update({
+    where: { id: userId },
+    data: { password: hashedPassword },
+  });
+
+  // Invalidate all refresh tokens to force re-login
+  await prisma.refreshToken.deleteMany({ where: { userId } });
+
+  return { message: 'Parola a fost schimbată cu succes.' };
+};

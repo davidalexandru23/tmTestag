@@ -515,10 +515,8 @@ export const deleteTask = async (userId, taskId) => {
 };
 
 export const listWorkspaceTasks = async (userId, workspaceId) => {
-  const membership = await requireWorkspaceMembership(userId, workspaceId);
-  if (![Role.OWNER, Role.LEADER].includes(membership.role)) {
-    throw new ApiError(403, 'Doar liderii pot vedea toate task-urile din workspace.');
-  }
+  // Allow all members to see tasks, not just leaders
+  await requireWorkspaceMembership(userId, workspaceId);
 
   const tasks = await prisma.task.findMany({
     where: { workspaceId },

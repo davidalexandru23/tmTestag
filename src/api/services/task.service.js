@@ -179,7 +179,17 @@ export const getTaskById = async (userId, taskId) => {
     throw new ApiError(404, 'Task-ul nu există.');
   }
 
-  await requireWorkspaceMembership(userId, task.workspaceId);
+  // For workspace tasks, check membership. For personal tasks, check creator/assignee
+  if (task.workspaceId) {
+    await requireWorkspaceMembership(userId, task.workspaceId);
+  } else {
+    // Personal task - user must be creator or assignee
+    const isCreator = task.creatorId === userId;
+    const isAssignee = task.assignments.some(a => a.assigneeId === userId);
+    if (!isCreator && !isAssignee) {
+      throw new ApiError(403, 'Nu aveți acces la acest task.');
+    }
+  }
 
   const delegationChain = await hydrateDelegationChain(task.delegationChain);
 
@@ -322,7 +332,10 @@ export const updateTaskStatus = async (userId, taskId, status) => {
     throw new ApiError(404, 'Task-ul nu există.');
   }
 
-  await requireWorkspaceMembership(userId, task.workspaceId);
+  // For workspace tasks, check membership. For personal tasks, user must be assigned
+  if (task.workspaceId) {
+    await requireWorkspaceMembership(userId, task.workspaceId);
+  }
 
   const currentAssignment = task.assignments.find((assignment) => assignment.assigneeId === userId);
   if (!currentAssignment) {
@@ -392,9 +405,17 @@ export const updateTask = async (userId, taskId, payload) => {
   const task = await prisma.task.findUnique({ where: { id: taskId } });
   if (!task) throw new ApiError(404, 'Task-ul nu există.');
 
-  const membership = await requireWorkspaceMembership(userId, task.workspaceId);
-  if (![Role.OWNER, Role.LEADER].includes(membership.role) && task.creatorId !== userId) {
-    throw new ApiError(403, 'Nu aveți permisiunea de a edita acest task.');
+  // For personal tasks, only creator can edit. For workspace tasks, check permissions
+  if (task.workspaceId) {
+    const membership = await requireWorkspaceMembership(userId, task.workspaceId);
+    if (![Role.OWNER, Role.LEADER].includes(membership.role) && task.creatorId !== userId) {
+      throw new ApiError(403, 'Nu aveți permisiunea de a edita acest task.');
+    }
+  } else {
+    // Personal task - only creator can edit
+    if (task.creatorId !== userId) {
+      throw new ApiError(403, 'Nu aveți permisiunea de a edita acest task.');
+    }
   }
 
   const { title, description, dueDate, assigneeId } = payload;

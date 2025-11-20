@@ -122,3 +122,17 @@ export const addWorkspaceMember = async (requesterId, workspaceId, { userId, rol
     role: member.role,
   };
 };
+
+export const deleteWorkspace = async (userId, workspaceId) => {
+  const workspace = await prisma.workspace.findUnique({ where: { id: workspaceId } });
+
+  if (!workspace) {
+    throw new ApiError(404, 'Workspace-ul nu există.');
+  }
+
+  if (workspace.ownerId !== userId) {
+    throw new ApiError(403, 'Doar proprietarul poate șterge workspace-ul.');
+  }
+
+  await prisma.workspace.delete({ where: { id: workspaceId } });
+};

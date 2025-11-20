@@ -59,10 +59,10 @@ model WorkspaceMember {
   joinedAt DateTime @default(now())
 
   userId String
-  user   User   @relation("WorkspaceMember", fields: [userId], references: [id])
+  user   User   @relation("WorkspaceMember", fields: [userId], references: [id], onDelete: Cascade)
 
   workspaceId String
-  workspace   Workspace @relation("WorkspaceMembers", fields: [workspaceId], references: [id])
+  workspace   Workspace @relation("WorkspaceMembers", fields: [workspaceId], references: [id], onDelete: Cascade)
 
   @@unique([userId, workspaceId])
 }
@@ -79,13 +79,13 @@ model Task {
   delegationCount Int       @default(0)
 
   creatorId String
-  creator   User   @relation("TaskCreator", fields: [creatorId], references: [id])
+  creator   User   @relation("TaskCreator", fields: [creatorId], references: [id], onDelete: Cascade)
 
   workspaceId String?
-  workspace   Workspace? @relation("WorkspaceTasks", fields: [workspaceId], references: [id])
+  workspace   Workspace? @relation("WorkspaceTasks", fields: [workspaceId], references: [id], onDelete: Cascade)
 
   parentId String?
-  parent   Task?  @relation("SubTasks", fields: [parentId], references: [id])
+  parent   Task?  @relation("SubTasks", fields: [parentId], references: [id], onDelete: Cascade)
   subTasks Task[] @relation("SubTasks")
 
   assignments     TaskAssignment[] @relation("TaskAssignments")
@@ -97,10 +97,10 @@ model TaskAssignment {
   assignedAt DateTime @default(now())
 
   taskId String
-  task   Task   @relation("TaskAssignments", fields: [taskId], references: [id])
+  task   Task   @relation("TaskAssignments", fields: [taskId], references: [id], onDelete: Cascade)
 
   assigneeId String
-  assignee   User   @relation("TaskAssignee", fields: [assigneeId], references: [id])
+  assignee   User   @relation("TaskAssignee", fields: [assigneeId], references: [id], onDelete: Cascade)
 
   @@unique([taskId, assigneeId])
 }
@@ -111,14 +111,14 @@ model Message {
   createdAt DateTime @default(now())
 
   senderId String
-  sender   User   @relation("SentMessages", fields: [senderId], references: [id])
+  sender   User   @relation("SentMessages", fields: [senderId], references: [id], onDelete: Cascade)
 
   // Messages can be direct (receiverId) or workspace-wide (workspaceId)
   receiverId String?
-  receiver   User?   @relation("ReceivedMessages", fields: [receiverId], references: [id])
+  receiver   User?   @relation("ReceivedMessages", fields: [receiverId], references: [id], onDelete: Cascade)
 
   workspaceId String?
-  workspace   Workspace? @relation("WorkspaceMessages", fields: [workspaceId], references: [id])
+  workspace   Workspace? @relation("WorkspaceMessages", fields: [workspaceId], references: [id], onDelete: Cascade)
 }
 
 model ActivityLog {

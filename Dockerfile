@@ -19,4 +19,5 @@ RUN npm prune --production
 
 EXPOSE 4000
 
-CMD ["npm", "start"]
+# Push schema to DB and start the server
+CMD npx prisma db push && npm start

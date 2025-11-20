@@ -4,6 +4,7 @@ import {
   listWorkspaces,
   getWorkspace,
   addWorkspaceMember,
+  deleteWorkspace,
 } from '../controllers/workspace.controller.js';
 import { protectRoute } from '../middleware/auth.middleware.js';
 

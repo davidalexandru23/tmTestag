@@ -135,4 +135,6 @@ export const deleteWorkspace = async (userId, workspaceId) => {
   }
 
   await prisma.workspace.delete({ where: { id: workspaceId } });
+
+  return { message: 'Workspace deleted successfully' };
 };
